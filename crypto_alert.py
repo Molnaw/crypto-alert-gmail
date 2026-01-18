@@ -1,29 +1,53 @@
-name: Crypto Daily Alert
+import requests
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import os
 
-on:
-  schedule:
-    - cron: '0 0 * * *'
-    - cron: '0 5 * * *'
-    - cron: '0 12 * * *'
-  workflow_dispatch:
+def get_bitkub_price(symbol):
+    try:
+        url = "https://api.bitkub.com/api/market/ticker"
+        response = requests.get(url)
+        data = response.json()
+        return data.get(f"THB_{symbol}", {}).get("last", "N/A")
+    except:
+        return "Error"
 
-jobs:
-  report:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+def get_okx_price(symbol):
+    try:
+        url = f"https://www.okx.com/api/v5/market/ticker?instId={symbol}-USDT"
+        response = requests.get(url)
+        data = response.json()
+        return data['data'][0]['last']
+    except:
+        return "Error"
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.9'
+def send_email(subject, body):
+    sender_email = os.environ.get('GMAIL_USER')
+    receiver_email = os.environ.get('GMAIL_USER')
+    password = os.environ.get('GMAIL_APP_PASSWORD')
 
-      - name: Install dependencies
-        run: pip install requests
+    message = MIMEMultipart()
+    message["From"] = sender_email
+    message["To"] = receiver_email
+    message["Subject"] = subject
+    message.attach(MIMEText(body, "plain"))
 
-      - name: Run Alert Bot
-        env:
-          GMAIL_USER: ${{ secrets.GMAIL_USER }}
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-        run: python crypto_alert.py
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender_email, password)
+            server.sendmail(sender_email, receiver_email, message.as_string())
+            print("Email sent successfully!")
+    except Exception as e:
+        print(f"Error: {e}")
+
+# รายการเหรียญ
+coins = ["BTC", "ETH", "SOL"]
+report = "--- Crypto Price Report ---\n\n"
+
+for coin in coins:
+    bk_price = get_bitkub_price(coin)
+    ok_price = get_okx_price(coin)
+    report += f"🟡 {coin}:\nBitkub: {bk_price} THB\nOKX: {ok_price} USDT\n\n"
+
+send_email("Crypto Price Alert", report)
