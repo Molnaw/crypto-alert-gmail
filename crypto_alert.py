@@ -2,11 +2,8 @@ name: Crypto Daily Alert
 
 on:
   schedule:
-    # รอบที่ 1: 07:00 น. เวลาไทย
     - cron: '0 0 * * *'
-    # รอบที่ 2: 12:00 น. เวลาไทย
     - cron: '0 5 * * *'
-    # รอบที่ 3: 19:00 น. เวลาไทย
     - cron: '0 12 * * *'
   workflow_dispatch:
 
